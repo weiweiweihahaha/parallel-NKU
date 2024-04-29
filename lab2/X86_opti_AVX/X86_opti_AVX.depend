@@ -1,0 +1,8 @@
+# depslib dependency file v1.0
+1714058729 source:d:\大二下\paralleling\实验\lab2\x86_opti_avx\main.cpp
+	<stdio.h>
+	<iostream>
+	<windows.h>
+	<stdlib.h>
+	<immintrin.h>
+
