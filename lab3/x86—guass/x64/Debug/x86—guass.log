@@ -1,0 +1,15 @@
+﻿  FileName.cpp
+D:\大二下\paralleling\实验\lab3\x86—guass\FileName.cpp(31,24): warning C4101: “a”: 未引用的局部变量
+D:\大二下\paralleling\实验\lab3\x86—guass\FileName.cpp(91,27): warning C4244: “=”: 从“int”转换到“float”，可能丢失数据
+D:\大二下\paralleling\实验\lab3\x86—guass\FileName.cpp(318,23): error C2131: 表达式的计算结果不是常数
+D:\大二下\paralleling\实验\lab3\x86—guass\FileName.cpp(318,23): message : 因读取超过生命周期的变量而失败
+D:\大二下\paralleling\实验\lab3\x86—guass\FileName.cpp(318,23): message : 请参见“num_threads”的用法
+D:\大二下\paralleling\实验\lab3\x86—guass\FileName.cpp(319,25): error C2131: 表达式的计算结果不是常数
+D:\大二下\paralleling\实验\lab3\x86—guass\FileName.cpp(319,25): message : 因读取超过生命周期的变量而失败
+D:\大二下\paralleling\实验\lab3\x86—guass\FileName.cpp(319,25): message : 请参见“num_threads”的用法
+D:\大二下\paralleling\实验\lab3\x86—guass\FileName.cpp(441,23): error C2131: 表达式的计算结果不是常数
+D:\大二下\paralleling\实验\lab3\x86—guass\FileName.cpp(441,23): message : 因读取超过生命周期的变量而失败
+D:\大二下\paralleling\实验\lab3\x86—guass\FileName.cpp(441,23): message : 请参见“num_threads”的用法
+D:\大二下\paralleling\实验\lab3\x86—guass\FileName.cpp(442,25): error C2131: 表达式的计算结果不是常数
+D:\大二下\paralleling\实验\lab3\x86—guass\FileName.cpp(442,25): message : 因读取超过生命周期的变量而失败
+D:\大二下\paralleling\实验\lab3\x86—guass\FileName.cpp(442,25): message : 请参见“num_threads”的用法

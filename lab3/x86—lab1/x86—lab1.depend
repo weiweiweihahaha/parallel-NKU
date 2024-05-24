@@ -1,0 +1,11 @@
+# depslib dependency file v1.0
+1716349231 source:d:\大二下\paralleling\实验\lab3\x86—lab1\main.cpp
+	<iostream>
+	<windows.h>
+	<stdlib.h>
+	<pthread.h>
+	<semaphore.h>
+	<nmmintrin.h>
+
+1716189115 source:d:\大二下\paralleling\实验\lab3\x86—lab1\arm_neon.c
+

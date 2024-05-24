@@ -1,0 +1,7 @@
+# depslib dependency file v1.0
+1716340333 source:d:\大二下\paralleling\实验\lab3\x86—动态\main.cpp
+	<iostream>
+	<cstdlib>
+	<windows.h>
+	<immintrin.h>
+

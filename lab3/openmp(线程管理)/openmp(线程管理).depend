@@ -1,0 +1,9 @@
+# depslib dependency file v1.0
+1716438964 source:d:\大二下\paralleling\实验\lab3\openmp(线程管理)\main.cpp
+	<iostream>
+	<stdlib.h>
+	<time.h>
+	<windows.h>
+	<pmmintrin.h>
+	<omp.h>
+

@@ -1,0 +1,10 @@
+# depslib dependency file v1.0
+1716379941 source:d:\大二下\paralleling\实验\lab3\x86_lab2(任务划分)\main.cpp
+	<iostream>
+	<windows.h>
+	<stdlib.h>
+	<pthread.h>
+	<semaphore.h>
+	<nmmintrin.h>
+	<immintrin.h>
+

@@ -1,0 +1,9 @@
+# depslib dependency file v1.0
+1716548597 source:d:\大二下\paralleling\实验\lab3\super\main.cpp
+	<omp.h>
+	<iostream>
+	<sstream>
+	<fstream>
+	<sys/time.h>
+	<immintrin.h>
+
