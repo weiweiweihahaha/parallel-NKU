@@ -1,0 +1,3 @@
+﻿  FileName.cpp
+D:\大二下\paralleling\实验\lab4\X86_lab111\x86_lab1\FileName.cpp(30,30): warning C4244: “=”: 从“int”转换到“float”，可能丢失数据
+  x86_lab1.vcxproj -> D:\大二下\paralleling\实验\lab4\X86_lab111\x86_lab1\x64\Debug\x86_lab1.exe
