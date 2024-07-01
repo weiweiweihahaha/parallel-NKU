@@ -1,0 +1,320 @@
+#include <omp.h>
+#include <iostream>
+#include <sstream>
+#include <fstream>
+#include <sys/time.h>
+#include <cstring>
+
+using namespace std;
+
+unsigned int Act[23045][722] = { 0 };
+unsigned int Pas[23045][722] = { 0 };
+
+const int Num = 721;
+const int pasNum = 14325;
+const int lieNum = 23045;
+
+const int NUM_THREADS = 8; //线程数量
+
+bool sign;
+
+struct threadParam_t {
+    int t_id; // 线程 id
+};
+
+// 消元子初始化
+void init_A() {
+    unsigned int a;
+    ifstream infile("/home/data/Grobner/测试样例8 矩阵列数23045，非零消元子18748，被消元行14325/消元子.txt");
+    char fin[10000] = { 0 };
+    int index;
+    while (infile.getline(fin, sizeof(fin))) {
+        std::stringstream line(fin);
+        int biaoji = 0;
+        while (line >> a) {
+            if (biaoji == 0) {
+                index = a;
+                biaoji = 1;
+            }
+            int k = a % 32;
+            int j = a / 32;
+            int temp = 1 << k;
+            Act[index][Num - 1 - j] += temp;
+            Act[index][Num] = 1;
+        }
+    }
+}
+
+// 被消元行初始化
+void init_P() {
+    unsigned int a;
+    ifstream infile("/home/data/Grobner/测试样例8 矩阵列数23045，非零消元子18748，被消元行14325/被消元行.txt");
+    char fin[10000] = { 0 };
+    int index = 0;
+    while (infile.getline(fin, sizeof(fin))) {
+        std::stringstream line(fin);
+        int biaoji = 0;
+        while (line >> a) {
+            if (biaoji == 0) {
+                Pas[index][Num] = a;
+                biaoji = 1;
+            }
+            int k = a % 32;
+            int j = a / 32;
+            int temp = 1 << k;
+            Pas[index][Num - 1 - j] += temp;
+        }
+        index++;
+    }
+}
+
+void f_omp1() {
+    #pragma omp parallel num_threads(NUM_THREADS)
+    do {
+        for (int i = lieNum - 1; i - 8 >= -1; i -= 8) {
+            #pragma omp for schedule(static)
+            for (int j = 0; j < pasNum; j++) {
+                while (Pas[j][Num] <= i && Pas[j][Num] >= i - 7) {
+                    int index = Pas[j][Num];
+                    if (Act[index][Num] == 1) {
+                        for (int k = 0; k < Num; k++) {
+                            Pas[j][k] ^= Act[index][k];
+                        }
+                        int num = 0, S_num = 0;
+                        for (num = 0; num < Num; num++) {
+                            if (Pas[j][num] != 0) {
+                                unsigned int temp = Pas[j][num];
+                                while (temp != 0) {
+                                    temp >>= 1;
+                                    S_num++;
+                                }
+                                S_num += num * 32;
+                                break;
+                            }
+                        }
+                        Pas[j][Num] = S_num - 1;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        for (int i = lieNum % 8 - 1; i >= 0; i--) {
+            #pragma omp for schedule(static)
+            for (int j = 0; j < pasNum; j++) {
+                while (Pas[j][Num] == i) {
+                    if (Act[i][Num] == 1) {
+                        for (int k = 0; k < Num; k++) {
+                            Pas[j][k] ^= Act[i][k];
+                        }
+                        int num = 0, S_num = 0;
+                        for (num = 0; num < Num; num++) {
+                            if (Pas[j][num] != 0) {
+                                unsigned int temp = Pas[j][num];
+                                while (temp != 0) {
+                                    temp >>= 1;
+                                    S_num++;
+                                }
+                                S_num += num * 32;
+                                break;
+                            }
+                        }
+                        Pas[j][Num] = S_num - 1;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        #pragma omp single
+        {
+            sign = false;
+            for (int i = 0; i < pasNum; i++) {
+                int temp = Pas[i][Num];
+                if (temp == -1) {
+                    continue;
+                }
+                if (Act[temp][Num] == 0) {
+                    for (int k = 0; k < Num; k++) {
+                        Act[temp][k] = Pas[i][k];
+                    }
+                    Pas[i][Num] = -1;
+                    sign = true;
+                }
+            }
+        }
+    } while (sign);
+}
+
+void f_omp2() {
+    #pragma omp parallel num_threads(NUM_THREADS)
+    for (int i = lieNum - 1; i - 8 >= -1; i -= 8) {
+        for (int j = 0; j < pasNum; j++) {
+            while (Pas[j][Num] <= i && Pas[j][Num] >= i - 7) {
+                int index = Pas[j][Num];
+                if (Act[index][Num] == 1) {
+                    #pragma omp for schedule(static)
+                    for (int k = 0; k < Num; k++) {
+                        Pas[j][k] ^= Act[i][k];
+                    }
+                    int num = 0, S_num = 0;
+                    for (num = 0; num < Num; num++) {
+                        if (Pas[j][num] != 0) {
+                            unsigned int temp = Pas[j][num];
+                            while (temp != 0) {
+                                temp >>= 1;
+                                S_num++;
+                            }
+                            S_num += num * 32;
+                            break;
+                        }
+                    }
+                    Pas[j][Num] = S_num - 1;
+                } else {
+                    for (int k = 0; k < Num; k++) {
+                        Act[index][k] = Pas[j][k];
+                    }
+                    Act[index][Num] = 1;
+                    break;
+                }
+            }
+        }
+    }
+
+    for (int i = lieNum % 8 - 1; i >= 0; i--) {
+        for (int j = 0; j < pasNum; j++) {
+            while (Pas[j][Num] == i) {
+                if (Act[i][Num] == 1) {
+                    #pragma omp for schedule(static)
+                    for (int k = 0; k < Num; k++) {
+                        Pas[j][k] ^= Act[i][k];
+                    }
+                    int num = 0, S_num = 0;
+                    for (num = 0; num < Num; num++) {
+                        if (Pas[j][num] != 0) {
+                            unsigned int temp = Pas[j][num];
+                            while (temp != 0) {
+                                temp >>= 1;
+                                S_num++;
+                            }
+                            S_num += num * 32;
+                            break;
+                        }
+                    }
+                    Pas[j][Num] = S_num - 1;
+                } else {
+                    for (int k = 0; k < Num; k++) {
+                        Act[i][k] = Pas[j][k];
+                    }
+                    Act[i][Num] = 1;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void f_ordinary() {
+    int i;
+    for (i = lieNum - 1; i - 8 >= -1; i -= 8) {
+        for (int j = 0; j < pasNum; j++) {
+            while (Pas[j][Num] <= i && Pas[j][Num] >= i - 7) {
+                int index = Pas[j][Num];
+                if (Act[index][Num] == 1) {
+                    for (int k = 0; k < Num; k++) {
+                        Pas[j][k] ^= Act[index][k];
+                    }
+                    int num = 0, S_num = 0;
+                    for (num = 0; num < Num; num++) {
+                        if (Pas[j][num] != 0) {
+                            unsigned int temp = Pas[j][num];
+                            while (temp != 0) {
+                                temp >>= 1;
+                                S_num++;
+                            }
+                            S_num += num * 32;
+                            break;
+                        }
+                    }
+                    Pas[j][Num] = S_num - 1;
+                } else {
+                    for (int k = 0; k < Num; k++) {
+                        Act[index][k] = Pas[j][k];
+                    }
+                    Act[index][Num] = 1;
+                    break;
+                }
+            }
+        }
+    }
+
+    for (i = lieNum % 8 - 1; i >= 0; i--) {
+        for (int j = 0; j < pasNum; j++) {
+            while (Pas[j][Num] == i) {
+                if (Act[i][Num] == 1) {
+                    for (int k = 0; k < Num; k++) {
+                        Pas[j][k] ^= Act[i][k];
+                    }
+                    int num = 0, S_num = 0;
+                    for (num = 0; num < Num; num++) {
+                        if (Pas[j][num] != 0) {
+                            unsigned int temp = Pas[j][num];
+                            while (temp != 0) {
+                                temp >>= 1;
+                                S_num++;
+                            }
+                            S_num += num * 32;
+                            break;
+                        }
+                    }
+                    Pas[j][Num] = S_num - 1;
+                } else {
+                    for (int k = 0; k < Num; k++) {
+                        Act[i][k] = Pas[j][k];
+                    }
+                    Act[i][Num] = 1;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+int main(int argc, char* argv[]) {
+    init_A();
+    init_P();
+
+    struct timeval head, tail;
+    long long head_, tail_;
+
+    gettimeofday(&head, NULL);
+    head_ = head.tv_sec * 1000000 + head.tv_usec;
+
+    f_omp1(); // 并行高斯消去
+
+    gettimeofday(&tail, NULL);
+    tail_ = tail.tv_sec * 1000000 + tail.tv_usec;
+    printf("f_omp1() = %lld\n", tail_ - head_);
+
+    gettimeofday(&head, NULL);
+    head_ = head.tv_sec * 1000000 + head.tv_usec;
+
+    f_omp2(); // 并行高斯消去
+
+    gettimeofday(&tail, NULL);
+    tail_ = tail.tv_sec * 1000000 + tail.tv_usec;
+    printf("f_omp2() = %lld\n", tail_ - head_);
+
+    gettimeofday(&head, NULL);
+    head_ = head.tv_sec * 1000000 + head.tv_usec;
+
+    f_ordinary(); // 传统高斯消去
+
+    gettimeofday(&tail, NULL);
+    tail_ = tail.tv_sec * 1000000 + tail.tv_usec;
+    printf("f_ordinary() = %lld\n", tail_ - head_);
+
+    return 0;
+}
