@@ -1,0 +1,432 @@
+#include <pmmintrin.h>
+#include <xmmintrin.h>
+#include <emmintrin.h>
+#include <smmintrin.h>
+#include <tmmintrin.h>
+#include <nmmintrin.h>
+#include <iostream>
+#include <sstream>
+#include <fstream>
+#include <immintrin.h> //AVX, AVX2
+#include <sys/time.h>
+using namespace std;
+
+unsigned int Act[23045][722] = { 0 };
+unsigned int Pas[23045][722] = { 0 };
+
+const int Num = 721;
+const int pasNum = 14325;
+const int lieNum = 23045;
+
+void init_A()
+{
+    unsigned int a;
+    ifstream infile("Groebner/测试样例8 矩阵列数23045，非零消元子18748，被消元行14325/消元子.txt");
+    char fin[10000] = { 0 };
+    int index;
+
+    while (infile.getline(fin, sizeof(fin)))
+    {
+        std::stringstream line(fin);
+        int biaoji = 0;
+
+        while (line >> a)
+        {
+            if (biaoji == 0)
+            {
+                index = a;
+                biaoji = 1;
+            }
+            int k = a % 32;
+            int j = a / 32;
+
+            int temp = 1 << k;
+            Act[index][Num - 1 - j] += temp;
+            Act[index][Num] = 1;
+        }
+    }
+}
+
+void init_P()
+{
+    unsigned int a;
+    ifstream infile("Groebner/测试样例8 矩阵列数23045，非零消元子18748，被消元行14325/被消元行.txt");
+    char fin[10000] = { 0 };
+    int index = 0;
+
+    while (infile.getline(fin, sizeof(fin)))
+    {
+        std::stringstream line(fin);
+        int biaoji = 0;
+
+        while (line >> a)
+        {
+            if (biaoji == 0)
+            {
+                Pas[index][Num] = a;
+                biaoji = 1;
+            }
+
+            int k = a % 32;
+            int j = a / 32;
+
+            int temp = 1 << k;
+            Pas[index][Num - 1 - j] += temp;
+        }
+        index++;
+    }
+}
+
+void f_ordinary()
+{
+    for (int i = lieNum - 1; i - 8 >= -1; i -= 8)
+    {
+        for (int j = 0; j < pasNum; j++)
+        {
+            while (Pas[j][Num] <= i && Pas[j][Num] >= i - 7)
+            {
+                int index = Pas[j][Num];
+                if (Act[index][Num] == 1)
+                {
+                    for (int k = 0; k < Num; k++)
+                    {
+                        Pas[j][k] = Pas[j][k] ^ Act[index][k];
+                    }
+
+                    int num = 0, S_num = 0;
+                    for (num = 0; num < Num; num++)
+                    {
+                        if (Pas[j][num] != 0)
+                        {
+                            unsigned int temp = Pas[j][num];
+                            while (temp != 0)
+                            {
+                                temp = temp >> 1;
+                                S_num++;
+                            }
+                            S_num += num * 32;
+                            break;
+                        }
+                    }
+                    Pas[j][Num] = S_num - 1;
+                }
+                else
+                {
+                    for (int k = 0; k < Num; k++)
+                        Act[index][k] = Pas[j][k];
+
+                    Act[index][Num] = 1;
+                    break;
+                }
+            }
+        }
+    }
+
+    for (int i = lieNum % 8 - 1; i >= 0; i--)
+    {
+        for (int j = 0; j < pasNum; j++)
+        {
+            while (Pas[j][Num] == i)
+            {
+                if (Act[i][Num] == 1)
+                {
+                    for (int k = 0; k < Num; k++)
+                    {
+                        Pas[j][k] = Pas[j][k] ^ Act[i][k];
+                    }
+
+                    int num = 0, S_num = 0;
+                    for (num = 0; num < Num; num++)
+                    {
+                        if (Pas[j][num] != 0)
+                        {
+                            unsigned int temp = Pas[j][num];
+                            while (temp != 0)
+                            {
+                                temp = temp >> 1;
+                                S_num++;
+                            }
+                            S_num += num * 32;
+                            break;
+                        }
+                    }
+                    Pas[j][Num] = S_num - 1;
+                }
+                else
+                {
+                    for (int k = 0; k < Num; k++)
+                        Act[i][k] = Pas[j][k];
+
+                    Act[i][Num] = 1;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+__m128 va_Pas;
+__m128 va_Act;
+
+void f_sse()
+{
+    for (int i = lieNum - 1; i - 8 >= -1; i -= 8)
+    {
+        for (int j = 0; j < pasNum; j++)
+        {
+            while (Pas[j][Num] <= i && Pas[j][Num] >= i - 7)
+            {
+                int index = Pas[j][Num];
+                if (Act[index][Num] == 1)
+                {
+                    int k;
+                    for (k = 0; k + 4 <= Num; k += 4)
+                    {
+                        va_Pas = _mm_loadu_ps((float*)&(Pas[j][k]));
+                        va_Act = _mm_loadu_ps((float*)&(Act[index][k]));
+
+                        va_Pas = _mm_xor_ps(va_Pas, va_Act);
+                        _mm_storeu_ps((float*)&(Pas[j][k]), va_Pas);
+                    }
+
+                    for (; k < Num; k++)
+                    {
+                        Pas[j][k] = Pas[j][k] ^ Act[index][k];
+                    }
+
+                    int num = 0, S_num = 0;
+                    for (num = 0; num < Num; num++)
+                    {
+                        if (Pas[j][num] != 0)
+                        {
+                            unsigned int temp = Pas[j][num];
+                            while (temp != 0)
+                            {
+                                temp = temp >> 1;
+                                S_num++;
+                            }
+                            S_num += num * 32;
+                            break;
+                        }
+                    }
+                    Pas[j][Num] = S_num - 1;
+                }
+                else
+                {
+                    for (int k = 0; k < Num; k++)
+                        Act[index][k] = Pas[j][k];
+
+                    Act[index][Num] = 1;
+                    break;
+                }
+            }
+        }
+    }
+
+    for (int i = lieNum % 8 - 1; i >= 0; i--)
+    {
+        for (int j = 0; j < pasNum; j++)
+        {
+            while (Pas[j][Num] == i)
+            {
+                if (Act[i][Num] == 1)
+                {
+                    int k;
+                    for (k = 0; k + 4 <= Num; k += 4)
+                    {
+                        va_Pas = _mm_loadu_ps((float*)&(Pas[j][k]));
+                        va_Act = _mm_loadu_ps((float*)&(Act[i][k]));
+                        va_Pas = _mm_xor_ps(va_Pas, va_Act);
+                        _mm_storeu_ps((float*)&(Pas[j][k]), va_Pas);
+                    }
+
+                    for (; k < Num; k++)
+                    {
+                        Pas[j][k] = Pas[j][k] ^ Act[i][k];
+                    }
+
+                    int num = 0, S_num = 0;
+                    for (num = 0; num < Num; num++)
+                    {
+                        if (Pas[j][num] != 0)
+                        {
+                            unsigned int temp = Pas[j][num];
+                            while (temp != 0)
+                            {
+                                temp = temp >> 1;
+                                S_num++;
+                            }
+                            S_num += num * 32;
+                            break;
+                        }
+                    }
+                    Pas[j][Num] = S_num - 1;
+                }
+                else
+                {
+                    for (int k = 0; k < Num; k++)
+                        Act[i][k] = Pas[j][k];
+
+                    Act[i][Num] = 1;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+__m256 va_Pas2;
+__m256 va_Act2;
+
+void f_avx256()
+{
+    for (int i = lieNum - 1; i - 8 >= -1; i -= 8)
+    {
+        for (int j = 0; j < pasNum; j++)
+        {
+            while (Pas[j][Num] <= i && Pas[j][Num] >= i - 7)
+            {
+                int index = Pas[j][Num];
+                if (Act[index][Num] == 1)
+                {
+                    int k;
+                    for (k = 0; k + 8 <= Num; k += 8)
+                    {
+                        va_Pas2 = _mm256_loadu_ps((float*)&(Pas[j][k]));
+                        va_Act2 = _mm256_loadu_ps((float*)&(Act[index][k]));
+
+                        va_Pas2 = _mm256_xor_ps(va_Pas2, va_Act2);
+                        _mm256_storeu_ps((float*)&(Pas[j][k]), va_Pas2);
+                    }
+
+                    for (; k < Num; k++)
+                    {
+                        Pas[j][k] = Pas[j][k] ^ Act[index][k];
+                    }
+
+                    int num = 0, S_num = 0;
+                    for (num = 0; num < Num; num++)
+                    {
+                        if (Pas[j][num] != 0)
+                        {
+                            unsigned int temp = Pas[j][num];
+                            while (temp != 0)
+                            {
+                                temp = temp >> 1;
+                                S_num++;
+                            }
+                            S_num += num * 32;
+                            break;
+                        }
+                    }
+                    Pas[j][Num] = S_num - 1;
+                }
+                else
+                {
+                    for (int k = 0; k < Num; k++)
+                        Act[index][k] = Pas[j][k];
+
+                    Act[index][Num] = 1;
+                    break;
+                }
+            }
+        }
+    }
+
+    for (int i = lieNum % 8 - 1; i >= 0; i--)
+    {
+        for (int j = 0; j < pasNum; j++)
+        {
+            while (Pas[j][Num] == i)
+            {
+                if (Act[i][Num] == 1)
+                {
+                    int k;
+                    for (k = 0; k + 8 <= Num; k += 8)
+                    {
+                        va_Pas2 = _mm256_loadu_ps((float*)&(Pas[j][k]));
+                        va_Act2 = _mm256_loadu_ps((float*)&(Act[i][k]));
+                        va_Pas2 = _mm256_xor_ps(va_Pas2, va_Act2);
+                        _mm256_storeu_ps((float*)&(Pas[j][k]), va_Pas2);
+                    }
+
+                    for (; k < Num; k++)
+                    {
+                        Pas[j][k] = Pas[j][k] ^ Act[i][k];
+                    }
+
+                    int num = 0, S_num = 0;
+                    for (num = 0; num < Num; num++)
+                    {
+                        if (Pas[j][num] != 0)
+                        {
+                            unsigned int temp = Pas[j][num];
+                            while (temp != 0)
+                            {
+                                temp = temp >> 1;
+                                S_num++;
+                            }
+                            S_num += num * 32;
+                            break;
+                        }
+                    }
+                    Pas[j][Num] = S_num - 1;
+                }
+                else
+                {
+                    for (int k = 0; k < Num; k++)
+                        Act[i][k] = Pas[j][k];
+
+                    Act[i][Num] = 1;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void printResults(const std::string& filename)
+{
+    ofstream myfile(filename);
+    for (int i = 0; i < pasNum; i++)
+    {
+        for (int j = 0; j < Num; j++)
+        {
+            myfile << Pas[i][j] << " ";
+        }
+        myfile << endl;
+    }
+    myfile.close();
+}
+
+int main()
+{
+    init_A();
+    init_P();
+
+    timeval start, end;
+    gettimeofday(&start, NULL);
+    f_ordinary();
+    gettimeofday(&end, NULL);
+    long seconds = end.tv_sec - start.tv_sec;
+    long micros = ((seconds * 1000000) + end.tv_usec) - (start.tv_usec);
+    std::cout << "Ordinary method execution time: " << micros << " microseconds" << std::endl;
+
+    gettimeofday(&start, NULL);
+    f_sse();
+    gettimeofday(&end, NULL);
+    seconds = end.tv_sec - start.tv_sec;
+    micros = ((seconds * 1000000) + end.tv_usec) - (start.tv_usec);
+    std::cout << "SSE method execution time: " << micros << " microseconds" << std::endl;
+
+    gettimeofday(&start, NULL);
+    f_avx256();
+    gettimeofday(&end, NULL);
+    seconds = end.tv_sec - start.tv_sec;
+    micros = ((seconds * 1000000) + end.tv_usec) - (start.tv_usec);
+    std::cout << "AVX256 method execution time: " << micros << " microseconds" << std::endl;
+
+    printResults("Groebner/output.txt");
+
+    return 0;
+}
